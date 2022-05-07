@@ -4,12 +4,12 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 #[derive(Default)]
-struct Rechenraetsel {
+struct Rechenraetsel<const ALLOW_NEGATIVE: bool> {
     cache: HashMap<Box<[u8]>, (BTreeSet<i64>, BTreeSet<i64>)>,
     cache_mul: HashMap<Box<[u8]>, (BTreeSet<i64>, BTreeSet<i64>)>,
 }
 
-impl Rechenraetsel {
+impl<const ALLOW_NEGATIVE: bool> Rechenraetsel<ALLOW_NEGATIVE> {
     fn possible_results(&mut self, digits: &[u8]) -> (BTreeSet<i64>, BTreeSet<i64>) {
         if digits.len() == 0 {
             return ([0].into_iter().collect(), BTreeSet::new());
@@ -34,14 +34,24 @@ impl Rechenraetsel {
             new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| duplicates2.iter().copied().map(move |v2| v1 + v2)));
 
             if sep != 0 {
-                new_duplicates.extend(possible1.iter().copied().flat_map(|v1| duplicates2.iter().copied().map(move |v2| v1 - v2)));
-                new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| possible2.iter().copied().map(move |v2| v1 - v2)));
-                new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| duplicates2.iter().copied().map(move |v2| v1 - v2)));
+                if ALLOW_NEGATIVE {
+                    new_duplicates.extend(possible1.iter().copied().flat_map(|v1| duplicates2.iter().copied().map(move |v2| v1 - v2)));
+                    new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| possible2.iter().copied().map(move |v2| v1 - v2)));
+                    new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| duplicates2.iter().copied().map(move |v2| v1 - v2)));
+                } else {
+                    new_duplicates.extend(possible1.iter().copied().flat_map(|v1| duplicates2.iter().copied().flat_map(move |v2| if v1 - v2 >= 0 { Some(v1 - v2) } else { None })));
+                    new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| possible2.iter().copied().flat_map(move |v2| if v1 - v2 >= 0 { Some(v1 - v2) } else { None })));
+                    new_duplicates.extend(duplicates1.iter().copied().flat_map(|v1| duplicates2.iter().copied().flat_map(move |v2| if v1 - v2 >= 0 { Some(v1 - v2) } else { None })));
+                }
             }
 
             let possible_plus: BTreeSet<i64> = possible1.iter().copied().flat_map(|v1| possible2.iter().copied().map(move |v2| v1 + v2)).collect();
             let possible_minus: BTreeSet<i64> = if sep != 0 {
-                possible1.iter().copied().flat_map(|v1| possible2.iter().copied().map(move |v2| v1 - v2)).collect()
+                if ALLOW_NEGATIVE {
+                    possible1.iter().copied().flat_map(|v1| possible2.iter().copied().map(move |v2| v1 - v2)).collect()
+                } else {
+                    possible1.iter().copied().flat_map(|v1| possible2.iter().copied().filter_map(move |v2| if v1 - v2 >= 0 { Some(v1 - v2) } else { None })).collect()
+                }
             } else {
                 BTreeSet::new()
             };
@@ -107,6 +117,10 @@ fn main() {
             .value_name("RESULT")
             .help("Result to test for.")
         )
+        .arg(Arg::new("no-negative-partials")
+            .long("--no-negative-partials")
+            .help("Disallow negative partial sums")
+        )
         .get_matches();
 
     let mut digits = Vec::new();
@@ -122,8 +136,11 @@ fn main() {
         None
     };
 
-    let mut rechenraetsel = Rechenraetsel::default();
-    let (possible, duplicates) = rechenraetsel.possible_results(&digits);
+    let (possible, duplicates) = if matches.is_present("no-negative-partials") {
+        Rechenraetsel::<false>::default().possible_results(&digits)
+    } else {
+        Rechenraetsel::<true>::default().possible_results(&digits)
+    };
 
     if let Some(r) = result {
         if possible.contains(&r) {
