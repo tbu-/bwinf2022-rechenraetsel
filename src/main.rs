@@ -96,11 +96,17 @@ impl<const ALLOW_NEGATIVE: bool> Rechenraetsel<ALLOW_NEGATIVE> {
             }
         }
         let new_possible_mul: BTreeSet<i64> = possible.iter().copied().map(|p| p * next_digit).collect();
-        let new_possible_div: BTreeSet<i64> = possible.iter().copied().filter_map(|p| if p % next_digit == 0 { Some(p / next_digit) } else { None }).collect();
+        let new_possible_div: BTreeSet<i64> = if digits.len() != 1 {
+            possible.iter().copied().filter_map(|p| if p % next_digit == 0 { Some(p / next_digit) } else { None }).collect()
+        } else {
+            BTreeSet::new()
+        };
         let mut new_duplicates: BTreeSet<i64> = BTreeSet::new();
         new_duplicates.extend(duplicates.iter().copied().map(|p| p * next_digit));
-        new_duplicates.extend(duplicates.iter().copied().filter_map(|p| if p % next_digit == 0 { Some(p / next_digit) } else { None }));
-        new_duplicates.extend(new_possible_mul.intersection(&new_possible_div).copied());
+        if digits.len() != 1 {
+            new_duplicates.extend(duplicates.iter().copied().filter_map(|p| if p % next_digit == 0 { Some(p / next_digit) } else { None }));
+            new_duplicates.extend(new_possible_mul.intersection(&new_possible_div).copied());
+        }
         (new_possible_mul.symmetric_difference(&new_possible_div).copied().filter(|p| !new_duplicates.contains(p)).collect(), new_duplicates)
     }
 }
