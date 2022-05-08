@@ -3,7 +3,7 @@
 from collections import namedtuple
 
 __author__ = "@functionpointer"
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 class MyCustomInteger(namedtuple("MyCustomInteger", "val")):
 
@@ -44,7 +44,7 @@ def get_results(aufg: tuple[int], ops: list[str] = [], printstuff=False) -> list
         return result
     else:
         task = [str(val) for pair in zip(["MyCustomInteger(" + str(a) + ")" for a in aufg], ops) for val in pair] + [f"MyCustomInteger({aufg[-1]})"]
-        taskstring = "".join(task)
+        taskstring = " ".join(task)
         try:
             result = eval(taskstring)
             if result is not None:
@@ -55,7 +55,7 @@ def get_results(aufg: tuple[int], ops: list[str] = [], printstuff=False) -> list
             return []
         if result.is_integer():
             if printstuff:
-                print(f"{result} = {taskstring}")
+                print(f"{result} = {taskstring.replace('MyCustomInteger(','').replace(')','')}")
             return [int(result)]
         else:
             return []
